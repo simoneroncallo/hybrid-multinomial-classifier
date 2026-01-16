@@ -1,0 +1,16 @@
+Dockerfile
+rsyncignore
+start.sh
+build.sh
+
+.backup/
+.notes/
+
+data/
+**/.ipynb_checkpoints/
+**/__pycache__/
+
+.git/
+.gitignore
+LICENSE
+README.md
