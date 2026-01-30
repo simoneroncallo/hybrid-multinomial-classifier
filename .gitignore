@@ -6,6 +6,8 @@
 
 # Ignore data
 data/
+history.png
+accuracy.txt
 
 # Ignore backups
 *.bac

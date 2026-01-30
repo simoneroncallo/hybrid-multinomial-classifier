@@ -1,13 +1,9 @@
 import torch
 
-class SquareModulus(torch.nn.Module):
-    """ Compute the square modulus of the input. """
-    def forward(self, x):
-        return torch.square(torch.abs(x))
-
-class QuantumNetwork(torch.nn.Module):
-    def __init__(self, input_dim, hidden_dim, use_bias_sigmoid, num_layers: None = None, encoding = 'amplitude'):
-        """ Initialize shallow network. 
+class ClassicalNetwork(torch.nn.Module):
+    def __init__(self, input_dim, hidden_dim, use_bias_sigmoid, num_layers: int = 1, encoding = 'amplitude'):
+        """ 
+        Initialize a classical neural network. For simplicty, all the hidden layers have the same number of neurons.
         Arguments:
         input_dim -- Shape of the input array
         hidden_dim -- Number of hidden neurons
@@ -15,40 +11,28 @@ class QuantumNetwork(torch.nn.Module):
         super().__init__()
         self.encoding = encoding
         self.bias_sigmoid = use_bias_sigmoid
+        self.layers = []
         
-        self.hidden_w = torch.nn.Parameter(torch.randn(hidden_dim, input_dim, dtype=torch.float64))
-        self.output_w = torch.nn.Parameter(torch.randn(1, hidden_dim, dtype=torch.float64))
+        # Hidden layers
+        dim = input_dim
+        for _ in range(num_layers):
+            self.layers.append(torch.nn.Dropout(p=0.1))
+            self.layers.append(torch.nn.Linear(dim, hidden_dim, bias = use_bias_sigmoid, dtype=torch.float64))
+            self.layers.append(torch.nn.BatchNorm1d(hidden_dim, dtype=torch.float64)) # NEW -> Batch normalization
+            self.layers.append(torch.nn.ReLU())
+            dim = hidden_dim
+        # Output layer
+        self.layers.append(torch.nn.Linear(dim, 1, bias = use_bias_sigmoid, dtype=torch.float64))
+        self.layers.append(torch.nn.Sigmoid())
         
-        self.activation = SquareModulus()
-        if self.bias_sigmoid:
-            self.bias = torch.nn.Parameter(torch.randn(1))
-            self.sigmoid = torch.nn.Sigmoid()
-
-        self.project() # Normalize
+        self.model = torch.nn.Sequential(*self.layers) # Unroll the list of layers as arguments of nn.Sequential
 
     def forward(self, x):
-        """ Forward pass.
-        Arguments:
-        x -- Input (batch_size, num_features)
-        W1 -> (num_features, num_hidden)
-        W2 -> (1, num_hidden)
+        """ 
+        Forward pass using the Sequential model.
         """
-        z = torch.matmul(x, self.hidden_w.t()) # Shape (batch_size, num_hidden)
-        z = self.activation(z)
-        z = torch.matmul(z, self.output_w.t()) # Shape (batch_size, 1)
-        if self.bias_sigmoid:
-            z += self.bias
-            z = self.sigmoid(z)
+        z = self.model(x)
         return z
-
-    def project(self):
-        """ Projection after optimizer.step()"""
-        with torch.no_grad():
-            norm = torch.sum(torch.square(self.hidden_w), dim=1).unsqueeze(1)
-            self.hidden_w /= torch.sqrt(norm) # Normalize hidden layer (L2)
-            self.output_w.copy_(torch.nn.functional.softplus(self.output_w)) # Positivity
-            #norm = torch.sum(self.output_w)
-            #self.output_w /= norm # Normalize output layer (L1)
 
     def fit(self, train_loader, val_loader, num_epochs, user_loss, user_optimizer):
         """ Train the model"""
@@ -64,7 +48,6 @@ class QuantumNetwork(torch.nn.Module):
                 loss = user_loss(outputs, Ybatch) # Loss
                 loss.backward() # Gradients
                 user_optimizer.step() # Update
-                self.project()
         
                 with torch.no_grad():
                     preds_train = (outputs >= 0.5).float() # Threshold
@@ -88,7 +71,7 @@ class QuantumNetwork(torch.nn.Module):
                     num_items += Xbatch.size(0)          
             history_val[epoch, :] /= num_items
 
-        return (self.hidden_w, self.output_w), history_train, history_val
+        return (None, None), history_train, history_val
             
             
 

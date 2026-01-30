@@ -8,7 +8,7 @@ def get_accuracy(models, test_X, test_Y, num_classes, num_models, mode):
     for idx in range(num_classes):
         mask = (test_Y[:, 0] == idx).squeeze() # Mask classes
         X = test_X[mask].reshape(mask.sum(), -1) # Mask dataset
-        out = torch.zeros(X.shape[0], num_models) # Binary model outputs
+        out = torch.zeros(X.shape[0], num_models, dtype = X.dtype) # Binary model outputs
         bin_pred = torch.zeros(X.shape[0], num_models, dtype = int) 
         label_pred = torch.zeros_like(bin_pred) 
     

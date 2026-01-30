@@ -7,7 +7,7 @@ from tqdm import tqdm
 import warnings
 from numpy.exceptions import VisibleDeprecationWarning
 
-def load_dataset(dataset_name: str, download: bool = True) -> tuple[tuple[torch.Tensor, torch.Tensor], tuple[torch.Tensor, torch.Tensor]]:
+def load_dataset(dataset_name: str, download: bool = True, labels: list[int] | None = None) -> tuple[tuple[torch.Tensor, torch.Tensor], tuple[torch.Tensor, torch.Tensor]]:
     # PyTorch
     transform = transforms.ToTensor()
     def data2numpy(x) -> np.ndarray:
@@ -17,14 +17,14 @@ def load_dataset(dataset_name: str, download: bool = True) -> tuple[tuple[torch.
             return np.asarray(x)
     
     if dataset_name == "MNIST":
-        trainDataset =  datasets.MNIST(root = "~/datasets/mnist/train", train = True, download = download, transform = transform)
-        testDataset = datasets.MNIST(root = "~/datasets/mnist/test", train = False, download = download, transform = transform)
+        trainDataset =  datasets.MNIST(root = "~/.ml-datasets/mnist/train", train = True, download = download, transform = transform)
+        testDataset = datasets.MNIST(root = "~/.ml-datasets/mnist/test", train = False, download = download, transform = transform)
     elif dataset_name == "Fashion":
-        trainDataset = datasets.FashionMNIST(root = "~/datasets/fashion/train", train = True, download = download, transform = transform) 
-        testDataset = datasets.FashionMNIST(root = "~/datasets/fashion/test", train = False, download = download, transform = transform)
+        trainDataset = datasets.FashionMNIST(root = "~/.ml-datasets/fashion/train", train = True, download = download, transform = transform) 
+        testDataset = datasets.FashionMNIST(root = "~/.ml-datasets/fashion/test", train = False, download = download, transform = transform)
     elif dataset_name == "CIFAR":
-        trainDataset = datasets.CIFAR10(root = "~/datasets/cifar/train", train = True, download = download, transform = transform) 
-        testDataset = datasets.CIFAR10(root = "~/datasets/cifar/test", train = False, download = download, transform = transform)
+        trainDataset = datasets.CIFAR10(root = "~/.ml-datasets/cifar/train", train = True, download = download, transform = transform) 
+        testDataset = datasets.CIFAR10(root = "~/.ml-datasets/cifar/test", train = False, download = download, transform = transform)
         warnings.filterwarnings("ignore", category=VisibleDeprecationWarning)
     else: raise ValueError("Dataset not available.")
     
@@ -33,8 +33,25 @@ def load_dataset(dataset_name: str, download: bool = True) -> tuple[tuple[torch.
     # (X, Y), (XAll, YAll)= tf.keras.datasets.fashion_mnist.load_data() # Fashion MNIST
     # (X, Y), (XAll, YAll) = tf.keras.datasets.cifar10.load_data() # CIFAR-10
 
+    #X, XAll = data2numpy(trainDataset.data), data2numpy(testDataset.data)
+    #Y, YAll = data2numpy(trainDataset.targets), data2numpy(testDataset.targets)
+
     X, XAll = data2numpy(trainDataset.data), data2numpy(testDataset.data)
     Y, YAll = data2numpy(trainDataset.targets), data2numpy(testDataset.targets)
+    
+    # Filter the labels
+    if labels is not None:
+        labels = np.asarray(labels)
+        trainX, testX = np.copy(X), np.copy(XAll)
+        trainY, testY = np.copy(Y), np.copy(YAll)
+        train_mask = np.isin(trainY, labels)
+        test_mask = np.isin(testY, labels)
+
+        X = trainX[train_mask]
+        Y = trainY[train_mask]
+        XAll = testX[test_mask]
+        YAll = testY[test_mask]
+    
     return ((X, Y), (XAll, YAll))
 
 def split_dataset(user_X: np.ndarray, user_Y: np.ndarray, test_X: np.ndarray, test_Y: np.ndarray, mode: str, balanced_dataset: bool, trainval_ratio: float, generator, show_population: bool = True) -> tuple[int, tuple[torch.Tensor, torch.Tensor], tuple[torch.Tensor, torch.Tensor]]:
@@ -44,8 +61,8 @@ def split_dataset(user_X: np.ndarray, user_Y: np.ndarray, test_X: np.ndarray, te
     test_Y = test_Y.astype(np.float64)[:,np.newaxis]
 
     # Squeeze extra dimension on the target labels
-    if user_Y.ndim == 3: user_Y = np.squeeze(user_Y, axis=-1) 
-    if test_Y.ndim == 3: test_Y = np.squeeze(test_Y, axis=-1) 
+    if user_Y.ndim == 3: user_Y = np.squeeze(user_Y, axis=-1)
+    if test_Y.ndim == 3: test_Y = np.squeeze(test_Y, axis=-1)
 
     # Convert to grayscale (if needed) and perform amplitude encoding (L2)
     tmpList = []
@@ -56,7 +73,7 @@ def split_dataset(user_X: np.ndarray, user_Y: np.ndarray, test_X: np.ndarray, te
             elX = np.mean(elX, axis = -1) # Grayscale
         ampX = np.sqrt(elX).reshape(elX.shape[0], -1)
         normX = np.linalg.norm(ampX, axis = 1)
-        if (normX == 0).any(): 
+        if (normX == 0).any():
             raise ValueError('Normalization is zero')
         tmpList.append(ampX/normX[:, np.newaxis]) # Normalization
     user_X = tmpList[0]
