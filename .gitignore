@@ -4,10 +4,11 @@
 # Ignore python cache
 **/__pycache__/
 
-# Ignore data
+# Ignore data and logs
 data/
 history.png
 accuracy.txt
+out.log
 
 # Ignore backups
 *.bac
