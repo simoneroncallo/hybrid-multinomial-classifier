@@ -1,12 +1,13 @@
 Dockerfile
 rsyncignore
 start.sh
-build.sh
+.cmd.txt
 
 .backup/
 .notes/
 
-data/
+scripts/
+
 **/.ipynb_checkpoints/
 **/__pycache__/
 

@@ -54,11 +54,16 @@ def load_dataset(dataset_name: str, download: bool = True, labels: list[int] | N
     
     return ((X, Y), (XAll, YAll))
 
-def split_dataset(user_X: np.ndarray, user_Y: np.ndarray, test_X: np.ndarray, test_Y: np.ndarray, mode: str, balanced_dataset: bool, trainval_ratio: float, generator, show_population: bool = True) -> tuple[int, tuple[torch.Tensor, torch.Tensor], tuple[torch.Tensor, torch.Tensor]]:
-    user_X = user_X.astype(np.float64)
-    user_Y = user_Y.astype(np.float64)[:,np.newaxis]
-    test_X = test_X.astype(np.float64)
-    test_Y = test_Y.astype(np.float64)[:,np.newaxis]
+def split_dataset(user_X: np.ndarray, user_Y: np.ndarray, test_X: np.ndarray, test_Y: np.ndarray, mode: str, balanced_dataset: bool, trainval_ratio: float, generator, show_population: bool = True, device: torch.device | str | None = None, dtype: torch.dtype = torch.float32) -> tuple[int, tuple[torch.Tensor, torch.Tensor], tuple[torch.Tensor, torch.Tensor]]:
+
+    # Preliminaries
+    device = torch.device(device) if device is not None else torch.device("cpu")
+    np_dtype = torch.tensor([], dtype=dtype).numpy().dtype # Match numpy and torch dtype
+    
+    user_X = user_X.astype(np_dtype, copy = False)
+    user_Y = user_Y.astype(np_dtype, copy = False)[:,np.newaxis]
+    test_X = test_X.astype(np_dtype, copy = False)
+    test_Y = test_Y.astype(np_dtype, copy = False)[:,np.newaxis]
 
     # Squeeze extra dimension on the target labels
     if user_Y.ndim == 3: user_Y = np.squeeze(user_Y, axis=-1)
@@ -77,8 +82,8 @@ def split_dataset(user_X: np.ndarray, user_Y: np.ndarray, test_X: np.ndarray, te
             raise ValueError('Normalization is zero')
         tmpList.append(ampX/normX[:, np.newaxis]) # Normalization
     user_X = tmpList[0]
-    Xtest = torch.tensor(tmpList[1], dtype=torch.float64)
-    Ytest = torch.tensor(test_Y, dtype=torch.float64)
+    Xtest = torch.tensor(tmpList[1], dtype = dtype, device = device)
+    Ytest = torch.tensor(test_Y, dtype = dtype, device = device)
     del tmpList
 
     # Split dataset
@@ -101,8 +106,8 @@ def split_dataset(user_X: np.ndarray, user_Y: np.ndarray, test_X: np.ndarray, te
                 tmp_Y = np.vstack((np.ones((len(one_idx), 1)), np.zeros((len(zero_idx), 1))))
             
             shuffled = generator.permutation(tmp_X.shape[0])
-            X.append(torch.tensor(tmp_X[shuffled], dtype=torch.float64))
-            Y.append(torch.tensor(tmp_Y[shuffled], dtype=torch.float64))
+            X.append(torch.tensor(tmp_X[shuffled], dtype = dtype, device = device))
+            Y.append(torch.tensor(tmp_Y[shuffled], dtype = dtype, device = device))
             
     elif mode == "one_vs_one": 
         num_models = num_classes*(num_classes-1)//2
@@ -116,8 +121,8 @@ def split_dataset(user_X: np.ndarray, user_Y: np.ndarray, test_X: np.ndarray, te
             tmp_Y = np.vstack((np.ones((len(one_idx), 1)), np.zeros((len(zero_idx), 1))))
             
             shuffled = generator.permutation(tmp_X.shape[0])
-            X.append(torch.tensor(tmp_X[shuffled], dtype=torch.float64))
-            Y.append(torch.tensor(tmp_Y[shuffled], dtype=torch.float64))
+            X.append(torch.tensor(tmp_X[shuffled], dtype = dtype, device = device))
+            Y.append(torch.tensor(tmp_Y[shuffled], dtype = dtype, device = device))
                 
     else: raise ValueError("Rule not available.")
 
@@ -125,7 +130,7 @@ def split_dataset(user_X: np.ndarray, user_Y: np.ndarray, test_X: np.ndarray, te
     Xtrain, Ytrain, Xval, Yval = [], [], [], []
     for x, y in zip(X, Y):
         split = int(trainval_ratio * x.shape[0])
-        idx = torch.randperm(x.shape[0])
+        idx = torch.randperm(x.shape[0], device = x.device)
         train_idx, val_idx = idx[:split], idx[split:]
         
         Xtrain.append(x[train_idx])
@@ -155,11 +160,16 @@ def split_dataset(user_X: np.ndarray, user_Y: np.ndarray, test_X: np.ndarray, te
     
     return ((num_classes, num_models), (Xtrain, Ytrain), (Xval, Yval), (Xtest, Ytest))
 
-def normalize_dataset(user_X: np.ndarray, user_Y: np.ndarray, test_X: np.ndarray, test_Y: np.ndarray):
-    user_X = user_X.astype(np.float64)
-    user_Y = user_Y.astype(np.float64)[:,np.newaxis]
-    test_X = test_X.astype(np.float64)
-    test_Y = test_Y.astype(np.float64)[:,np.newaxis]
+def normalize_dataset(user_X: np.ndarray, user_Y: np.ndarray, test_X: np.ndarray, test_Y: np.ndarray, device: torch.device | str | None = None, dtype: torch.dtype = torch.float32):
+
+    # Preliminaries
+    device = torch.device(device) if device is not None else torch.device("cpu")
+    np_dtype = torch.tensor([], dtype=dtype).numpy().dtype # Match numpy and torch dtype
+    
+    user_X = user_X.astype(np_dtype, copy = False)
+    user_Y = user_Y.astype(np_dtype, copy = False)[:,np.newaxis]
+    test_X = test_X.astype(np_dtype, copy = False)
+    test_Y = test_Y.astype(np_dtype, copy = False)[:,np.newaxis]
     num_models = np.unique(user_Y).size
     num_classes = np.unique(user_Y).size
 
@@ -178,11 +188,11 @@ def normalize_dataset(user_X: np.ndarray, user_Y: np.ndarray, test_X: np.ndarray
             raise ValueError('Normalization is zero')
         tmpList.append(ampX/normX[:, np.newaxis]) # Normalize
         
-    Xtrain = torch.tensor(tmpList[0], dtype=torch.float64)
-    Xtest = torch.tensor(tmpList[1], dtype=torch.float64)
+    Xtrain = torch.tensor(tmpList[0], dtype = dtype, device = device)
+    Xtest = torch.tensor(tmpList[1], dtype = dtype, device = device)
     
-    Ytrain = torch.tensor(user_Y, dtype=torch.float64)
-    Ytest = torch.tensor(test_Y, dtype=torch.float64)
+    Ytrain = torch.tensor(user_Y, dtype = dtype, device = device)
+    Ytest = torch.tensor(test_Y, dtype = dtype, device = device)
     del tmpList
 
     return ((num_classes, num_models), (Xtrain, Ytrain), (Xtest, Ytest))
