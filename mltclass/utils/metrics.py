@@ -47,7 +47,7 @@ def get_accuracy(objects: Tuple, test_X, test_Y, num_classes, num_models, mode, 
                 mdl_pred, _ = torch.mode(label_pred, dim=1) # Majority voting with torch.mode, ties are assigned to the smallest label. Noise?
             
         else: 
-            raise ValueError("Rule not available.")
+            raise ValueError("Mode not available")
 
         y_true = test_Y[mask, 0].to(torch.long)
         tmp = (mdl_pred == y_true).float().mean() * 100

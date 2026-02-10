@@ -6,7 +6,7 @@ class SquareModulus(torch.nn.Module):
         return torch.square(torch.abs(x))
 
 class QuantumNetwork(torch.nn.Module):
-    def __init__(self, input_dim, hidden_dim, use_bias_sigmoid, num_layers: None = None, encoding = 'amplitude'):
+    def __init__(self, input_dim, hidden_dim, use_bias_sigmoid, num_layers: None = None, encoding = 'amplitude', device: torch.device | str | None = None, dtype: torch.dtype = torch.float32):
         """ Initialize shallow network. 
         Arguments:
         input_dim -- Shape of the input array
@@ -15,13 +15,15 @@ class QuantumNetwork(torch.nn.Module):
         super().__init__()
         self.encoding = encoding
         self.bias_sigmoid = use_bias_sigmoid
+        self.device = torch.device(device) if device is not None else torch.device("cpu")
+        self.dtype = dtype
         
-        self.hidden_w = torch.nn.Parameter(torch.randn(hidden_dim, input_dim, dtype=torch.float64))
-        self.output_w = torch.nn.Parameter(torch.randn(1, hidden_dim, dtype=torch.float64))
+        self.hidden_w = torch.nn.Parameter(torch.randn(hidden_dim, input_dim, device = self.device, dtype = self.dtype))
+        self.output_w = torch.nn.Parameter(torch.randn(1, hidden_dim, device = self.device, dtype = self.dtype))
         
         self.activation = SquareModulus()
         if self.bias_sigmoid:
-            self.bias = torch.nn.Parameter(torch.randn(1))
+            self.bias = torch.nn.Parameter(torch.randn(1, device = self.device, dtype = self.dtype))
             self.sigmoid = torch.nn.Sigmoid()
 
         self.project() # Normalize
@@ -52,13 +54,17 @@ class QuantumNetwork(torch.nn.Module):
 
     def fit(self, train_loader, val_loader, num_epochs, user_loss, user_optimizer):
         """ Train the model"""
-        history_train = torch.zeros((num_epochs,2), dtype=torch.float64)
-        history_val = torch.zeros((num_epochs,2), dtype=torch.float64)
+        history_train = torch.zeros((num_epochs,2), device = "cpu", dtype = torch.float32)
+        history_val = torch.zeros((num_epochs,2), device = "cpu", dtype = torch.float32)
         for epoch in range(num_epochs):
             # Training
             self.train()
             num_items = 0
             for Xbatch, Ybatch in train_loader:
+                # Ensure device and dtype are correct
+                Xbatch = Xbatch.to(device = self.device, dtype = self.dtype, non_blocking = True)
+                Ybatch = Ybatch.to(device = self.device, dtype = self.dtype, non_blocking = True)
+                
                 user_optimizer.zero_grad() # Reset
                 outputs = self.forward(Xbatch) # Predict
                 loss = user_loss(outputs, Ybatch) # Loss
@@ -67,25 +73,31 @@ class QuantumNetwork(torch.nn.Module):
                 self.project()
         
                 with torch.no_grad():
-                    preds_train = (outputs >= 0.5).float() # Threshold
+                    preds_train = (outputs >= 0.5).to(dtype = Ybatch.dtype) # Threshold
                     acc_train = (preds_train.eq(Ybatch).sum().item())
                     history_train[epoch,0] += loss.item() * Xbatch.size(0) # Loss
                     history_train[epoch,1] += acc_train # Accuracy
                     num_items += Xbatch.size(0)          
+                    
             history_train[epoch, :] /= num_items
                 
             # Validation
             self.eval()
             num_items = 0
-            for Xbatch, Ybatch in val_loader:
-                with torch.no_grad():
+            with torch.inference_mode():
+                for Xbatch, Ybatch in val_loader:
+                    # Ensure device and dtype are correct
+                    Xbatch = Xbatch.to(device = self.device, dtype = self.dtype, non_blocking = True)
+                    Ybatch = Ybatch.to(device = self.device, dtype = self.dtype, non_blocking = True)
+                    
                     outputs_val = self.forward(Xbatch)
                     loss_val = user_loss(outputs_val, Ybatch)
-                    preds_val = (outputs_val >= 0.5).float()
+                    preds_val = (outputs_val >= 0.5).to(dtype = Ybatch.dtype)
                     acc_val = (preds_val.eq(Ybatch).sum().item())
                     history_val[epoch, 0] += loss_val.item() * Xbatch.size(0) # Loss
                     history_val[epoch, 1] += acc_val # Accuracy
                     num_items += Xbatch.size(0)          
+                    
             history_val[epoch, :] /= num_items
 
         return (self.hidden_w, self.output_w), history_train, history_val

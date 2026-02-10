@@ -57,7 +57,7 @@ class ClassicalNetwork(torch.nn.Module):
                 user_optimizer.step() # Update
         
                 with torch.no_grad():
-                    preds_train = (outputs >= 0.5).float() # Threshold
+                    preds_train = (outputs >= 0.5).to(dtype = Ybatch.dtype) # Threshold
                     acc_train = (preds_train.eq(Ybatch).sum().item())
                     history_train[epoch,0] += loss.item() * Xbatch.size(0) # Loss
                     history_train[epoch,1] += acc_train # Accuracy
@@ -76,7 +76,7 @@ class ClassicalNetwork(torch.nn.Module):
                     
                     outputs_val = self.forward(Xbatch)
                     loss_val = user_loss(outputs_val, Ybatch)
-                    preds_val = (outputs_val >= 0.5).float()
+                    preds_val = (outputs_val >= 0.5).to(dtype = Ybatch.dtype)
                     acc_val = (preds_val.eq(Ybatch).sum().item())
                     history_val[epoch, 0] += loss_val.item() * Xbatch.size(0) # Loss
                     history_val[epoch, 1] += acc_val # Accuracy
