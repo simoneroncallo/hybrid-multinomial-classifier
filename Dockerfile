@@ -22,6 +22,6 @@ RUN python /home/jupyteruser/work/getdata.py
 EXPOSE 8888
 CMD ["bash", "-c", "set -e && \
 jupyter lab --ip=0.0.0.0 --port=8888 --no-browser && \
-rm -rf /home/jupyteruser/work/data && \
+#rm -rf /home/jupyteruser/work/data && \
 find /home/jupyteruser/work -type d -name '__pycache__' -exec rm -rf {} + && \
 find /home/jupyteruser/work -type d -name '.ipynb_checkpoints' -exec rm -rf {} +"]

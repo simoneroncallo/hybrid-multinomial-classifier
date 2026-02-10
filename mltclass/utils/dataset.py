@@ -54,7 +54,7 @@ def load_dataset(dataset_name: str, download: bool = True, labels: list[int] | N
     
     return ((X, Y), (XAll, YAll))
 
-def split_dataset(user_X: np.ndarray, user_Y: np.ndarray, test_X: np.ndarray, test_Y: np.ndarray, mode: str, balanced_dataset: bool, trainval_ratio: float, generator, show_population: bool = True, device: torch.device | str | None = None, dtype: torch.dtype = torch.float32) -> tuple[int, tuple[torch.Tensor, torch.Tensor], tuple[torch.Tensor, torch.Tensor]]:
+def split_versus_dataset(user_X: np.ndarray, user_Y: np.ndarray, test_X: np.ndarray, test_Y: np.ndarray, mode: str, balanced_dataset: bool, trainval_ratio: float, generator, show_population: bool = True, device: torch.device | str | None = None, dtype: torch.dtype = torch.float32) -> tuple[int, tuple[torch.Tensor, torch.Tensor], tuple[torch.Tensor, torch.Tensor]]:
 
     # Preliminaries
     device = torch.device(device) if device is not None else torch.device("cpu")
@@ -159,6 +159,49 @@ def split_dataset(user_X: np.ndarray, user_Y: np.ndarray, test_X: np.ndarray, te
         print(df.to_string(index=False))
     
     return ((num_classes, num_models), (Xtrain, Ytrain), (Xval, Yval), (Xtest, Ytest))
+
+def split_tree_dataset(user_X: np.ndarray, user_Y: np.ndarray, test_X: np.ndarray, test_Y: np.ndarray, tree, depth: float,\
+generator, verbose: bool = True, device: torch.device | str | None = None, dtype: torch.dtype = torch.float32):
+    
+    X, Y = [], []
+    istraining = True # Verbose only for training
+    
+    for data_X, data_Y in [(user_X, user_Y), (test_X, test_Y)]:
+        tmplist_X , tmplist_Y = [], []
+        counter, legend = 0, {}
+        for d in range(1, depth): # Main training loop
+            if istraining and verbose: print(f"Depth: {d} -> {tree[d]}")
+            for idx in range(0, len(tree[d]) - 1, 2): # Loop over leaves
+                zeros = tree[d][idx]
+                ones = tree[d][idx + 1]
+                zero_idx = np.where(np.isin(data_Y[:,0], zeros))[0]
+                one_idx = np.where(np.isin(data_Y[:,0], ones))[0]
+
+                # Create binary models. Keep track of the original multinomial labels for navigating the decision tree with flattened models
+                if not istraining: legend[counter] = zeros + ones # Multinomial labels included in the node, e.g. [3,[4,5]] (Test only)
+                tmp_X = np.vstack((data_X[zero_idx], data_X[one_idx]))
+                tmp_Y = np.vstack((np.zeros((len(zero_idx), 1)), np.ones((len(one_idx), 1)))) # Binarized labels, e.g. [3,[4,5]] -> [0,1]
+                if istraining and verbose:
+                    print('Class 0:', np.unique(data_Y[zero_idx]))
+                    print('Class 1:', np.unique(data_Y[one_idx]))
+                    print('---')
+                
+                shuffled = generator.permutation(tmp_X.shape[0])
+                tmplist_X.append(torch.tensor(tmp_X[shuffled], device = device, dtype = dtype))
+                tmplist_Y.append(torch.tensor(tmp_Y[shuffled], device = device, dtype = dtype))
+                counter += 1
+                
+        istraining = False       
+        X.append(tmplist_X)
+        Y.append(tmplist_Y)
+
+    # Print tree structure
+    print('Legend') # Map from indexes to labels
+    for key in legend.keys():
+        print(f"Models {key} -> {legend[key]}")
+    tree_map = {tuple(v): k for k, v in legend.items()} # Inverse map from labels to indexes
+    
+    return (len(X[0]), legend, tree_map), (X[0], Y[0]), (X[1], Y[1])
 
 def normalize_dataset(user_X: np.ndarray, user_Y: np.ndarray, test_X: np.ndarray, test_Y: np.ndarray, device: torch.device | str | None = None, dtype: torch.dtype = torch.float32):
 
