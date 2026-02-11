@@ -6,8 +6,6 @@ start.sh
 .backup/
 .notes/
 
-scripts/
-
 **/.ipynb_checkpoints/
 **/__pycache__/
 

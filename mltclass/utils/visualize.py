@@ -1,8 +1,9 @@
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 
-def plot_history(history_train, history_val, show_legend: str = True):
+def plot_history(history_train, history_val, show_legend: str = True) -> Figure:
     """ History plot for training and validation dataset """
     num_classes = history_train.shape[0]
     num_plots = 4
@@ -27,7 +28,10 @@ def plot_history(history_train, history_val, show_legend: str = True):
     ylim_acc = [min(axs[2].get_ylim()[0], axs[3].get_ylim()[0]), max(axs[2].get_ylim()[1], axs[3].get_ylim()[1])]
     axs[0].set_ylim(ylim_loss), axs[1].set_ylim(ylim_loss) # Loss axes
     axs[2].set_ylim(ylim_acc), axs[3].set_ylim(ylim_acc) # Accuracy axes
-    plt.show()
+    fig.tight_layout()
+    plt.close()
+
+    return fig
 
 def plot_weights(weights):
     """ Show weights as images """

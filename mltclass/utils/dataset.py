@@ -196,9 +196,9 @@ generator, verbose: bool = True, device: torch.device | str | None = None, dtype
         Y.append(tmplist_Y)
 
     # Print tree structure
-    print('Legend') # Map from indexes to labels
-    for key in legend.keys():
-        print(f"Models {key} -> {legend[key]}")
+    # print('Legend') # Map from indexes to labels
+    # for key in legend.keys():
+    #    print(f"Models {key} -> {legend[key]}")
     tree_map = {tuple(v): k for k, v in legend.items()} # Inverse map from labels to indexes
     
     return (len(X[0]), legend, tree_map), (X[0], Y[0]), (X[1], Y[1])
