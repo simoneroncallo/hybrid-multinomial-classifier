@@ -48,7 +48,7 @@ def run_simulation(arch, mode, dataset):
     # --- PARAMETERS --- #
     num_epochs = 450
     num_hidden = 20
-    num_layers = 20 # For ClassicalNetwork
+    num_layers = 10 # For ClassicalNetwork
     batch_size = 128
     learning_rate = 0.05
     
