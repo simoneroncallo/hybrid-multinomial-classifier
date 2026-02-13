@@ -52,7 +52,7 @@ def run_simulation(arch, mode, dataset):
     batch_size = 128
     learning_rate = 0.05
     
-    optimizer = "Adam" # Available {SGD, Adam}
+    optimizer = "SGD" # Available {SGD, Adam}
     standardization = True
     balanced_dataset = False
     use_bias_sigmoid = True
