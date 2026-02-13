@@ -52,7 +52,8 @@ def run_simulation(arch, mode, dataset):
     batch_size = 128
     learning_rate = 0.05
     
-    optimizer = "SGD" # Available {SGD, Adam}
+    optimizer = "Adam" # Available {SGD, Adam}
+    standardization = True
     balanced_dataset = False
     use_bias_sigmoid = True
     trainval_ratio = 0.8 # Ratio 4:1
@@ -76,7 +77,8 @@ def run_simulation(arch, mode, dataset):
 
     # --- DATASET --- #
     (X, Y), (XAll, YAll) = load_dataset(
-        dataset, download = download, labels = labelmask
+        dataset, download = download, labels = labelmask, 
+        standardization = standardization
     )
 
     if mode == "one_vs_rest" or mode == "one_vs_one":

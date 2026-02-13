@@ -7,7 +7,7 @@ from tqdm import tqdm
 import warnings
 from numpy.exceptions import VisibleDeprecationWarning
 
-def load_dataset(dataset_name: str, download: bool = True, labels: list[int] | None = None) -> tuple[tuple[torch.Tensor, torch.Tensor], tuple[torch.Tensor, torch.Tensor]]:
+def load_dataset(dataset_name: str, download: bool = True, labels: list[int] | None = None, standardization: bool = False) -> tuple[tuple[torch.Tensor, torch.Tensor], tuple[torch.Tensor, torch.Tensor]]:
     # PyTorch
     transform = transforms.ToTensor()
     def data2numpy(x) -> np.ndarray:
@@ -51,7 +51,18 @@ def load_dataset(dataset_name: str, download: bool = True, labels: list[int] | N
         Y = trainY[train_mask]
         XAll = testX[test_mask]
         YAll = testY[test_mask]
-    
+
+    # EXPERIMENTAL: Dataset standardization
+    if standardization:
+        if X.ndim != any([3,4]):
+            mean = X.mean(axis = 0, keepdims = True)
+            std  = X.std(axis = 0, keepdims = True)
+            std = np.maximum(std, 1e-8)
+        else:
+            raise ValueError("Wrong dataset shape")
+        X = (X - mean) / std
+        XAll = (XAll - mean) / std
+        
     return ((X, Y), (XAll, YAll))
 
 def split_versus_dataset(user_X: np.ndarray, user_Y: np.ndarray, test_X: np.ndarray, test_Y: np.ndarray, mode: str, balanced_dataset: bool, trainval_ratio: float, generator, show_population: bool = True, device: torch.device | str | None = None, dtype: torch.dtype = torch.float32) -> tuple[int, tuple[torch.Tensor, torch.Tensor], tuple[torch.Tensor, torch.Tensor]]:
@@ -76,7 +87,8 @@ def split_versus_dataset(user_X: np.ndarray, user_Y: np.ndarray, test_X: np.ndar
             raise ValueError('Dataset not supported')
         elif elX.ndim == 4:
             elX = np.mean(elX, axis = -1) # Grayscale
-        ampX = np.sqrt(elX).reshape(elX.shape[0], -1)
+        # ampX = np.sqrt(elX).reshape(elX.shape[0], -1) Standardization fix
+        ampX = elX.reshape(elX.shape[0], -1) 
         normX = np.linalg.norm(ampX, axis = 1)
         if (normX == 0).any():
             raise ValueError('Normalization is zero')
@@ -225,7 +237,8 @@ def normalize_dataset(user_X: np.ndarray, user_Y: np.ndarray, test_X: np.ndarray
             raise ValueError('Dataset not supported')
         elif elX.ndim == 4:
             elX = np.mean(elX, axis = -1) # Grayscale conversion
-        ampX = np.sqrt(elX).reshape(elX.shape[0], -1)
+        #ampX = np.sqrt(elX).reshape(elX.shape[0], -1) # Standardization fix
+        ampX = elX.reshape(elX.shape[0], -1)
         normX = np.linalg.norm(ampX, axis = 1)
         if (normX == 0).any(): 
             raise ValueError('Normalization is zero')
