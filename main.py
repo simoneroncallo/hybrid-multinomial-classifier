@@ -47,9 +47,9 @@ def run_simulation(arch, mode, dataset):
 
     # --- PARAMETERS --- #
     num_epochs = 450
-    num_hidden = 20
+    num_hidden = 15
     num_layers = 10 # For ClassicalNetwork
-    batch_size = 128
+    batch_size = 64
     learning_rate = 0.05
     
     optimizer = "SGD" # Available {SGD, Adam}
