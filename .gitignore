@@ -8,7 +8,7 @@
 data/
 history.png
 accuracy.txt
-out.log
+output.log
 
 # Ignore backups
 *.bac

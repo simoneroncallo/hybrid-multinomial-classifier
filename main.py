@@ -47,12 +47,13 @@ def run_simulation(arch, mode, dataset):
 
     # --- PARAMETERS --- #
     num_epochs = 450
-    num_hidden = 20
-    num_layers = 20 # For ClassicalNetwork
-    batch_size = 128
+    num_hidden = 15
+    num_layers = 10 # For ClassicalNetwork
+    batch_size = 64
     learning_rate = 0.05
     
     optimizer = "SGD" # Available {SGD, Adam}
+    standardization = True
     balanced_dataset = False
     use_bias_sigmoid = True
     trainval_ratio = 0.8 # Ratio 4:1
@@ -76,7 +77,8 @@ def run_simulation(arch, mode, dataset):
 
     # --- DATASET --- #
     (X, Y), (XAll, YAll) = load_dataset(
-        dataset, download = download, labels = labelmask
+        dataset, download = download, labels = labelmask, 
+        standardization = standardization
     )
 
     if mode == "one_vs_rest" or mode == "one_vs_one":
