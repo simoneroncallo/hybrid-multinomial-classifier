@@ -47,7 +47,7 @@ def run_simulation(arch, mode, dataset):
 
     # --- PARAMETERS --- #
     num_epochs = 450
-    num_hidden = 15
+    num_hidden = 40
     num_layers = 10 # For ClassicalNetwork
     batch_size = 64
     learning_rate = 0.05
@@ -57,7 +57,7 @@ def run_simulation(arch, mode, dataset):
     balanced_dataset = False
     use_bias_sigmoid = True
     trainval_ratio = 0.8 # Ratio 4:1
-    labelmask = [0,1,2,3,4,5] # Example [0,1,5,8]
+    labelmask = [0,1,2,3] # Example [0,1,5,8]
     
     download = True
     rng = np.random.default_rng(2025)
@@ -131,8 +131,9 @@ def run_simulation(arch, mode, dataset):
         )
         loss_function = torch.nn.BCELoss() # Loss
         method = getattr(torch.optim, optimizer)
-        optimizers.append(
-            method(models[idx].parameters(), lr = learning_rate)
+        optimizers.append(method(
+		models[idx].parameters(), lr = learning_rate,
+		momentum = 0.9, weight_decay = 1e-4)
         ) # Optimizer
         (_,_), history_train[idx,:,:], history_val[idx,:,:] = models[idx].fit(
             train_loader[idx], val_loader[idx], num_epochs, loss_function, 
