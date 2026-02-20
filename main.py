@@ -132,12 +132,15 @@ def run_simulation(arch, mode, dataset):
         loss_function = torch.nn.BCELoss() # Loss
         method = getattr(torch.optim, optimizer)
         optimizers.append(method(
-		models[idx].parameters(), lr = learning_rate,
-		momentum = 0.9, weight_decay = 1e-4)
+		    models[idx].parameters(), lr = learning_rate,
+		    momentum = 0.9, weight_decay = 1e-4)
         ) # Optimizer
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizers[idx], T_max = num_epochs, eta_min=1e-6
+        )
         (_,_), history_train[idx,:,:], history_val[idx,:,:] = models[idx].fit(
             train_loader[idx], val_loader[idx], num_epochs, loss_function, 
-            optimizers[idx]
+            optimizers[idx], scheduler
         ) # Train
 
     # Plot

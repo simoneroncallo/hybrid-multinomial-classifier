@@ -52,7 +52,7 @@ class QuantumNetwork(torch.nn.Module):
             #norm = torch.sum(self.output_w)
             #self.output_w /= norm # Normalize output layer (L1)
 
-    def fit(self, train_loader, val_loader, num_epochs, user_loss, user_optimizer):
+    def fit(self, train_loader, val_loader, num_epochs, user_loss, user_optimizer, user_scheduler):
         """ Train the model"""
         history_train = torch.zeros((num_epochs,2), device = "cpu", dtype = torch.float32)
         history_val = torch.zeros((num_epochs,2), device = "cpu", dtype = torch.float32)
@@ -78,7 +78,8 @@ class QuantumNetwork(torch.nn.Module):
                     history_train[epoch,0] += loss.item() * Xbatch.size(0) # Loss
                     history_train[epoch,1] += acc_train # Accuracy
                     num_items += Xbatch.size(0)          
-                    
+
+            user_scheduler.step()
             history_train[epoch, :] /= num_items
                 
             # Validation
