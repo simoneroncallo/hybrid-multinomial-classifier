@@ -38,14 +38,24 @@ def parse_args():
                         choices = ["one_vs_rest", "one_vs_one", "tree"])
     parser.add_argument("--arch", type = str,
                         choices = ["classical", "quantum"])
-
+    parser.add_argument("--labelmask", type = int, nargs = "+",
+                        default = [0, 1, 2, 3],
+                        help = "Class labels to use (e.g. --labelmask 0 1 8)")                    
+    
     args, _ = parser.parse_known_args()
+
+    if len(args.labelmask) < 2:
+        parser.error("--labelmask requires at least 2 integers")
+    
     return args
 
-def run_simulation(arch, mode, dataset):
+def run_simulation(arch, mode, dataset, labelmask):
     """ Simulation runtime called by main() """
 
-    # --- PARAMETERS --- #
+    # ================================================================ #
+    #                          PARAMETERS                              #
+    # ================================================================ #
+    
     num_epochs = 450
     num_hidden = 20
     num_layers = 10 # For ClassicalNetwork
@@ -57,7 +67,6 @@ def run_simulation(arch, mode, dataset):
     balanced_dataset = False
     use_bias_sigmoid = True
     trainval_ratio = 0.8 # Ratio 4:1
-    labelmask = [0,1,2,3] # Example [0,1,5,8]
     
     download = True
     rng = np.random.default_rng(2025)
@@ -67,7 +76,10 @@ def run_simulation(arch, mode, dataset):
     dtype = torch.float32 # Floating point precision
     start = time.perf_counter() # Stopwatch
 
-    # --- ARCHITECTURE --- #
+    # ================================================================ #
+    #                         ARCHITECTURE                             #
+    # ================================================================ #
+    
     if arch == "classical":
         from mltclass import ClassicalNetwork as Model # Classical model
     elif arch == "quantum":
@@ -75,13 +87,17 @@ def run_simulation(arch, mode, dataset):
     else:
         raise ValueError("Architecture not available")
 
-    # --- DATASET --- #
+    # ================================================================ #
+    #                           DATASET                                #
+    # ================================================================ #
+    
     (X, Y), (XAll, YAll) = load_dataset(
         dataset, download = download, labels = labelmask, 
         standardization = standardization
     )
 
     if mode == "one_vs_rest" or mode == "one_vs_one":
+        
         # Split dataset
         (num_classes, num_models), train, val, test = split_versus_dataset(
             X, Y, XAll, YAll, mode, balanced_dataset, trainval_ratio, rng, 
@@ -89,10 +105,13 @@ def run_simulation(arch, mode, dataset):
         )
 
     elif mode == "tree":
+        
         # Normalize dataset
         (num_classes, _), (X0, Y0), test = normalize_dataset(
             X, Y, XAll, YAll, device = device, dtype = dtype
         )
+
+        # Generate tree
         tree, partition, depth = get_tree(labelmask, num_classes, rng) 
         (Xtest, Ytest) = test
         
@@ -101,11 +120,11 @@ def run_simulation(arch, mode, dataset):
             X0, Y0, Xtest, Ytest, tree, depth, rng, verbose = False
         )
 
-    else: 
-        raise ValueError("Mode not available")
+    else: raise ValueError("Mode not available")
 
-    # Build dataloader
     (Xtrain, Ytrain), (Xval, Yval), (Xtest, Ytest) = train, val, test
+
+    # Create dataloaders
     train_loader = [
         DataLoader(TensorDataset(X,Y), batch_size=batch_size, shuffle=True)
         for X,Y in zip(Xtrain, Ytrain)
@@ -115,44 +134,66 @@ def run_simulation(arch, mode, dataset):
         for X,Y in zip(Xval, Yval)
     ]
 
-    # --- TRAINING --- #
+    # ================================================================ #
+    #                           TRAINING                               #
+    # ================================================================ #
+    
+    hidden_weights, output_weights, models, optimizers = [], [], [], []
+
+    # Define histories
     history_train = torch.zeros(
-        (num_models,num_epochs,2), device = "cpu", dtype = torch.float32
+        (num_models, num_epochs, 2), device = "cpu", dtype = torch.float32
     )
     history_val = torch.zeros(
-        (num_models,num_epochs,2), device = "cpu", dtype = torch.float32
+        (num_models, num_epochs, 2), device = "cpu", dtype = torch.float32
     )
-    hidden_weights, output_weights, models, optimizers = [], [], [], []
+
     for idx in tqdm(range(num_models), ascii=' ='):
+
+        # Create model
         models.append(Model(
             Xtrain[idx].shape[1], num_hidden, 
             use_bias_sigmoid = use_bias_sigmoid, num_layers = num_layers,
             device = device, dtype = dtype)
         )
-        loss_function = torch.nn.BCELoss() # Loss
-        method = getattr(torch.optim, optimizer)
+
+        # Define loss function
+        loss_function = torch.nn.BCELoss()
+
+        # Create optimizer
+        method = getattr(torch.optim, optimizer) 
         optimizers.append(method(
 		    models[idx].parameters(), lr = learning_rate,
 		    momentum = 0.9, weight_decay = 1e-4)
-        ) # Optimizer
+        ) 
+
+        # Define optimizer scheduler
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizers[idx], T_max = num_epochs, eta_min=1e-6
         )
+
+        # Start training
         (_,_), history_train[idx,:,:], history_val[idx,:,:] = models[idx].fit(
             train_loader[idx], val_loader[idx], num_epochs, loss_function, 
             optimizers[idx], scheduler
-        ) # Train
+        ) 
 
-    # Plot
+    # Plot histories
     figure = plot_history(history_train, history_val, show_legend = False)
     figure.savefig(f"./data/{arch}_{mode}_{dataset}_history.png")
 
-    # --- INFERENCE --- #
+    # ================================================================ #
+    #                          INFERENCE                               #
+    # ================================================================ #
+    
     objects = models, tree, partition, tree_map
+
+    # Compute accuracy
     acc = get_accuracy(
         objects, Xtest, Ytest, num_classes, num_models, mode, 
         device = device, dtype = dtype
-    ) # Accuracies
+    )
+    
     df = pd.DataFrame.from_dict(acc)
     df = df.rename(index={df.index[-1]: 'Avg.'})
     df.to_string(f"./data/{arch}_{mode}_{dataset}_accuracy.txt")
@@ -168,11 +209,12 @@ def main():
     arch = args.arch
     mode = args.mode
     dataset = args.dataset
+    labelmask = args.labelmask
 
     # Verbose
     print("# --- START --- #")
-    print(f"Settings <- {arch}, {mode}, {dataset}")
-    run_simulation(arch, mode, dataset)
+    print(f"Settings <- {arch}, {mode}, {dataset}, {labelmask}")
+    run_simulation(arch, mode, dataset, labelmask)
     print("# ---  END  --- #\n")
 
 if __name__ == "__main__":
