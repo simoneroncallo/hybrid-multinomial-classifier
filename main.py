@@ -180,7 +180,8 @@ def run_simulation(arch, mode, dataset, labelmask):
 
     # Plot histories
     figure = plot_history(history_train, history_val, show_legend = False)
-    figure.savefig(f"./data/{arch}_{mode}_{dataset}_history.png")
+    maskinfo = ''.join(str(i) for i in labelmask)
+    figure.savefig(f"./data/{arch}_{mode}_{dataset}_{maskinfo}_history.png")
 
     # ================================================================ #
     #                          INFERENCE                               #
@@ -196,7 +197,8 @@ def run_simulation(arch, mode, dataset, labelmask):
     
     df = pd.DataFrame.from_dict(acc)
     df = df.rename(index={df.index[-1]: 'Avg.'})
-    df.to_string(f"./data/{arch}_{mode}_{dataset}_accuracy.txt")
+    maskinfo = ''.join(str(i) for i in labelmask)
+    df.to_string(f"./data/{arch}_{mode}_{dataset}_{maskinfo}_accuracy.txt")
 
     runtime = time.perf_counter() - start # Stopwatch
     print(f"Average accuracy of {df[mode].iloc[-1]:.1f}%")
