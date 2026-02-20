@@ -1,9 +1,9 @@
 Dockerfile
 rsyncignore
 start.sh
-.cmd.txt
 
 .backup/
+.exported/
 .notes/
 
 **/.ipynb_checkpoints/
