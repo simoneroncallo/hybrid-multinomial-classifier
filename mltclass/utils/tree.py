@@ -48,12 +48,12 @@ def get_tree(labelmask: np.ndarray, num_classes: int, rng):
         raise ValueError("Support only None and list types for labelmask")
     partition = get_bisection(labels.tolist(), rng)
     depth, tree = 0, []
-    print('Tree')
+    #print('Tree')
     while True:
         node = get_nodes(partition, depth)
         if node != []:
             tree.append(node)
-            print(f"Depth {depth}: {node}")
+            #print(f"Depth {depth}: {node}")
             depth += 1
         elif node == []: # Stops with empty leaves
             break
