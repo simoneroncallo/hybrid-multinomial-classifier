@@ -4,6 +4,7 @@ This repository contains the simulation code for a hybrid multinomial classifier
 
 [![arXiv](https://shields.io)](https://arxiv.org/abs/2604.08094)
 
+
 Contributors: Angela Rosy Morgillo [@MorgilloR](https://github.com/MorgilloR) and Simone Roncallo [@simoneroncallo](https://github.com/simoneroncallo) <br>
 Reference: [arXiv:2604.08094](https://arxiv.org/abs/2604.08094)
 
