@@ -2,8 +2,10 @@
 
 This repository contains the simulation code for a hybrid multinomial classifier which consists of multiple quantum binary models, combined using post-processing techniques such as one-vs-one, one-vs-rest and a binary decision tree. As a quantum model, we consider a quantum optical shallow network based on the Hong-Ou-Mandel effect. Previously implemented from scratch (see [quantum-optical-network](https://github.com/simoneroncallo/quantum-optical-network)), here we consider a full [PyTorch](https://github.com/pytorch/pytorch) implementation, that leverages its mathematical equivalence with a shallow neural network (with neurons subject to the L2 and L1 normalization constraints). 
 
+[![arXiv](https://shields.io)](https://arxiv.org/abs/2604.08094)
+
 Contributors: Angela Rosy Morgillo [@MorgilloR](https://github.com/MorgilloR) and Simone Roncallo [@simoneroncallo](https://github.com/simoneroncallo) <br>
-Reference: In Preparation (2026)
+Reference: [arXiv:2604.08094](https://arxiv.org/abs/2604.08094)
 
 ## Installation
 The Python environment can be configured in rootless [Docker](https://docs.docker.com/) container, by running the script `scripts/build.sh` or
